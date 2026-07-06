@@ -282,6 +282,8 @@ input[type=range]::-moz-range-thumb {
 .rate.r-hesite { border: 1.5px solid var(--noir-2); color: var(--noir-2); }
 .rate.r-su { border: 1.5px solid var(--bleu); color: var(--bleu); }
 
+.resume-btn { width: 100%; margin-top: 0.7rem; }
+.hidden { display: none !important; }
 .session-actions { display: flex; justify-content: space-between; margin-top: 1.1rem; }
 
 /* ===== Cartes (navigateur) ===== */
@@ -548,9 +550,11 @@ input[type=range]::-moz-range-thumb {
   </div>
 
   <div class="session-actions">
-    <button class="btn btn-outline btn-sm" onclick="editCurrentCard()">Modifier la carte</button>
+    <button class="btn btn-outline btn-sm" onclick="prevCard()">&#9664; Précédente</button>
+    <button class="btn btn-outline btn-sm" onclick="editCurrentCard()">Modifier</button>
     <button class="btn btn-primary btn-sm" onclick="endSession()">Terminer</button>
   </div>
+  <button class="btn btn-primary resume-btn hidden" id="resume-btn" onclick="resumeSession()">Reprendre la session</button>
 </div>
 
 <!-- ============ VUE CARTES ============ -->
@@ -831,11 +835,14 @@ let sessionCount = 0;
 let currentCard = null;
 let recentIds = [];
 let flipped = false;
+let sessionHistory = [];   // cartes déjà notées cette session
+let reviewIndex = null;    // null = session normale ; sinon index de relecture
 
 function startSession() {
   const pool = selectedPool();
   if (pool.length === 0) { toast('Aucune carte dans la sélection.'); return; }
   sessionCount = 0; recentIds = []; currentCard = null;
+  sessionHistory = []; reviewIndex = null;
   showView('session');
   nextCard();
 }
@@ -853,7 +860,8 @@ function nextCard() {
   let card = null;
   if (settings.mode === 'dosage' && Math.random() * 100 < settings.dosage) {
     const due = duePool(basePool);
-    if (due.length > 0) card = due[0];
+    // Tirage aléatoire parmi les dues : à urgence égale, aucun ordre de fichier ne doit transparaître
+    if (due.length > 0) card = due[Math.floor(Math.random() * due.length)];
   }
   if (!card) card = basePool[Math.floor(Math.random() * basePool.length)];
 
@@ -873,6 +881,9 @@ function renderCard() {
   document.getElementById('fc-front').textContent = currentCard.front;
   document.getElementById('fc-back').textContent = currentCard.back;
   document.getElementById('rating-bar').classList.remove('show');
+  const relecture = reviewIndex !== null;
+  document.getElementById('rating-bar').style.visibility = relecture ? 'hidden' : '';
+  document.getElementById('resume-btn').classList.toggle('hidden', !relecture);
   document.getElementById('session-count').textContent = sessionCount;
   document.getElementById('session-today').textContent = todayCount();
   const due = duePool(selectedPool()).length;
@@ -887,7 +898,9 @@ function flipCard() {
 }
 
 function rateCard(grade) {
+  if (reviewIndex !== null) return;   // en relecture, pas de notation
   if (!flipped || !currentCard) return;
+  sessionHistory.push(currentCard.id);
   const cards = getCards();
   const idx = cards.findIndex(c => c.id === currentCard.id);
   if (idx !== -1) {
@@ -926,6 +939,38 @@ function rateCard(grade) {
 
   sessionCount++;
   nextCard();
+}
+
+function prevCard() {
+  if (sessionHistory.length === 0) { toast('Aucune carte précédente dans cette session.'); return; }
+  if (reviewIndex === null) reviewIndex = sessionHistory.length - 1;
+  else if (reviewIndex > 0) reviewIndex--;
+  else { toast('Début de la session atteint.'); return; }
+  const card = getCards().find(c => c.id === sessionHistory[reviewIndex]);
+  if (!card) { toast('Carte supprimée entre-temps.'); return; }
+  currentRelecture = card;
+  showCard(card);
+}
+
+let currentRelecture = null;
+function resumeSession() {
+  reviewIndex = null; currentRelecture = null;
+  renderCard();   // réaffiche la carte en attente de notation
+}
+
+// Affiche une carte donnée (relecture) sans toucher au tirage en cours
+function showCard(card) {
+  flipped = false;
+  const fc = document.getElementById('flashcard');
+  fc.classList.remove('flipped');
+  const label = TAXONOMY[card.module].label + ' · ' + card.deck;
+  document.getElementById('fc-tag-front').textContent = label;
+  document.getElementById('fc-tag-back').textContent = card.module === 'textes' ? 'Contenu' : 'Portée';
+  document.getElementById('fc-front').textContent = card.front;
+  document.getElementById('fc-back').textContent = card.back;
+  document.getElementById('rating-bar').classList.remove('show');
+  document.getElementById('rating-bar').style.visibility = 'hidden';
+  document.getElementById('resume-btn').classList.remove('hidden');
 }
 
 function endSession() {
@@ -1073,10 +1118,12 @@ function autoRoute(rawDeck, front) {
   const f = (front || '').toLowerCase();
   if (d.includes('cedh') || d.includes('conv. edh') || d.includes('convention europ')) return ['textes', 'CEDH'];
   if (d.includes('ddhc') || d.includes('déclaration') || d.includes('declaration')) return ['textes', 'DDHC'];
+  if (d.includes('compétence territoriale') || d.includes('competence territoriale')) return ['textes', 'CJA'];
   if (d.includes('cja') || d.includes('code de justice')) return ['textes', 'CJA'];
   if (d.includes('gaja')) return ['jurisprudence', 'GAJA'];
-  if (d.includes('contentieux')) return ['jurisprudence', 'Contentieux administratif'];
-  if (d.includes('constitution') || d.includes('texte') || d.includes('article') || d.includes('compétence territoriale') || d.includes('competence territoriale')) return ['textes', 'Autres'];
+  if (d.includes('gaca') || d.includes('contentieux')) return ['jurisprudence', 'Contentieux administratif'];
+  if (d.includes('conseil constitutionnel')) return ['jurisprudence', 'Autres'];
+  if (d.includes('constitution') || d.includes('texte') || d.includes('article')) return ['textes', 'Autres'];
   if (d.includes('juris') || d.includes('arrêt') || d.includes('arret')) return ['jurisprudence', 'Autres'];
   // Repli : un recto qui ressemble à une décision (CE, CC, TC, Cass., CEDH…) part en jurisprudence
   if (/^\s*(ce|cc|tc|caa|ta|cass|cjue|cjce|cedh)[\s.,]/i.test(f)) return ['jurisprudence', 'Autres'];
@@ -1102,7 +1149,18 @@ function importAnki() {
 
   const reader = new FileReader();
   reader.onload = e => {
-    const lines = e.target.result.split(/\r?\n/).filter(l => l.trim() && !l.startsWith('#'));
+    const txt = e.target.result;
+    // Fichier binaire (paquet .apkg, zip...) : signature PK, octets nuls ou caractères illisibles
+    const sample = txt.slice(0, 4000);
+    let illisibles = 0;
+    for (const ch of sample) if (ch === '\uFFFD' || ch === '\u0000') illisibles++;
+    if (txt.startsWith('PK') || illisibles > 10) {
+      toast('Ce fichier est un paquet Anki (.apkg), pas un export texte. Dans Anki : Exporter \u2192 \u00ab Notes en texte brut (.txt) \u00bb.');
+      input.value = '';
+      document.getElementById('anki-file-name').textContent = 'Aucun fichier';
+      return;
+    }
+    const lines = txt.split(/\r?\n/).filter(l => l.trim() && !l.startsWith('#'));
     const cards = getCards();
     const existing = new Set(cards.map(c => (c.front + '\u241F' + c.back).toLowerCase()));
     let added = 0, skipped = 0;

@@ -32,6 +32,7 @@
   --bleu-2: #3C5A76;
   --rouge: #973A32;
   --rouge-bible: #7C1D1A;
+  --vert: #2F6B4F;
   --r: 12px;
   --r-sm: 8px;
   --ombre: 0 1px 2px rgba(28,26,22,0.05), 0 4px 14px rgba(28,26,22,0.06);
@@ -249,7 +250,7 @@ input[type=range]::-moz-range-thumb {
   font-size: 1.45rem; font-weight: 500; text-align: center; line-height: 1.4;
   overflow-y: auto;
 }
-.face.back .body { font-size: 1.15rem; font-weight: 400; text-align: left; align-items: flex-start; padding-top: 0.2rem; }
+.face.back .body { font-size: 1.15rem; font-weight: 400; text-align: justify; hyphens: auto; -webkit-hyphens: auto; align-items: flex-start; padding-top: 0.2rem; }
 .face .hint {
   text-align: center; font-size: 0.82rem; color: var(--noir-3);
   margin-top: 0.8rem;
@@ -280,7 +281,7 @@ input[type=range]::-moz-range-thumb {
 .rate small { display: block; font-size: 0.74rem; font-weight: 400; opacity: 0.8; margin-top: 0.05rem; }
 .rate.r-passu { border: 1.5px solid var(--rouge); color: var(--rouge); }
 .rate.r-hesite { border: 1.5px solid var(--noir-2); color: var(--noir-2); }
-.rate.r-su { border: 1.5px solid var(--bleu); color: var(--bleu); }
+.rate.r-su { border: 1.5px solid var(--vert); color: var(--vert); }
 
 .resume-btn { width: 100%; margin-top: 0.7rem; }
 .hidden { display: none !important; }
@@ -351,7 +352,7 @@ input[type=range]::-moz-range-thumb {
 .chart { display: flex; align-items: flex-end; gap: 4px; height: 120px; margin-top: 0.6rem; }
 .chart .col { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; gap: 1px; height: 100%; }
 .chart .seg { border-radius: 1px; min-height: 0; }
-.chart .seg.s-su { background: var(--bleu); }
+.chart .seg.s-su { background: var(--vert); }
 .chart .seg.s-hesite { background: var(--noir-3); }
 .chart .seg.s-passu { background: var(--rouge); }
 .chart .col.today { border-bottom: 2px solid var(--rouge); }
@@ -609,7 +610,7 @@ input[type=range]::-moz-range-thumb {
     <div class="chart" id="chart"></div>
     <div class="chart-days" id="chart-days"></div>
     <div class="legend">
-      <span><i style="background:var(--bleu)"></i>Su</span>
+      <span><i style="background:var(--vert)"></i>Su</span>
       <span><i style="background:var(--noir-3)"></i>Hésité</span>
       <span><i style="background:var(--rouge)"></i>Pas su</span>
     </div>
